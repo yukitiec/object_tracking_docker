@@ -1,0 +1,54 @@
+### AL ###
+#Template for AL projects for Dynamics 365 Business Central
+#launch.json folder
+.vscode/
+#Cache folder
+.alcache/
+#Symbols folder
+.alpackages/
+#Snapshots folder
+.snapshots/
+#Testing Output folder
+.output/
+#Extension App-file
+*.app
+#Rapid Application Development File
+rad.json
+#Translation Base-file
+*.g.xlf
+#License-file
+*.flf
+#pytorch file
+*.pt
+*.pth
+*.torchscript
+*.pyc
+#torchvision directory
+torchscript/
+video_20250908/
+yolov10n_weights/
+csv/
+camera_params/
+_pycache_/
+
+#output file.
+*.csv
+*.mp4
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+
+#Test results file
+TestResults.xml
+# Build outputs
+x64/
+Debug/
+Release/
+.vs/
+
+# User-specific
+*.vcxproj.user
+

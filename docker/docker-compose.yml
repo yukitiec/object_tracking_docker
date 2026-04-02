@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  ros2_tracker:
+    build:
+      context:..
+      dockerfile: docker/Dockerfile
+    image: ros2-humble-tracker:latest
+    container_name: ros2_humble_tracker
+    stdin_open: true
+    tty: true
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - TORCH_DIR=/opt/libtorch/share/cmake/Torch
+    volumes:
+      -../ros_ws:/ros_ws
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    devices:
+      - /dev/video0:/dev/video0
+    command: bash
