@@ -55,7 +55,7 @@ std::vector<int> TrackerManager::update2D(
         for (int i_new = 0; i_new < static_cast<int>(new_trackers.size()); i_new++) {
             std::vector<double> cost_row;
             cv::Rect2d bbox_new = new_trackers[i_new];
-            int label_new = labels[i_new];
+            unsigned int label_new = labels[i_new];
 
             for (int i_old = 0; i_old < static_cast<int>(estimated_bbox.size()); i_old++) {
                 cv::Rect2d bbox_old = estimated_bbox[i_old];
@@ -97,7 +97,7 @@ std::vector<int> TrackerManager::update2D(
                 idx_associated_trackers.push_back(i_new);
 
                 cv::Rect2d bbox_new = new_trackers[i_new];
-                int label_new = labels[i_new];
+                unsigned int label_new = labels[i_new];
 
                 // Save raw detection
                 storage_2d[i_old].push_back(
@@ -138,7 +138,7 @@ std::vector<int> TrackerManager::update2D(
 
                 for (int i_new = 0; i_new < static_cast<int>(new_trackers.size()); ++i_new) {
                     cv::Rect2d bbox_new = new_trackers[i_new];
-                    int label_new = labels[i_new];
+                    unsigned int label_new = labels[i_new];
 
                     // raw storage
                     storage_2d.push_back({
@@ -184,7 +184,7 @@ std::vector<int> TrackerManager::update2D(
             // No matching at all -> all new detections become new trackers
             for (int i_new = 0; i_new < static_cast<int>(new_trackers.size()); ++i_new) {
                 cv::Rect2d bbox_new = new_trackers[i_new];
-                int label_new = labels[i_new];
+                unsigned int label_new = labels[i_new];
 
                 storage_2d.push_back({
                     std::make_tuple(time_current, label_new, bbox_new)
@@ -227,7 +227,7 @@ std::vector<int> TrackerManager::update2D(
         // First update -> initialize storage and kalman filter
         for (int i_new = 0; i_new < static_cast<int>(new_trackers.size()); i_new++) {
             cv::Rect2d bbox_new = new_trackers[i_new];
-            int label_new = labels[i_new];
+            unsigned int label_new = labels[i_new];
 
             storage_2d.push_back({
                 std::make_tuple(time_current, label_new, bbox_new)

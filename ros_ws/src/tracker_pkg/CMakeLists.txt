@@ -10,6 +10,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(rosidl_default_runtime REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -23,63 +24,68 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   DEPENDENCIES std_msgs
 )
 
-include_directories(
+add_executable(tracker_pipeline
+  src/main.cpp
+  src/yolo_node.cpp
+  src/tracker_node.cpp
+  src/yolo_detect_batch.cpp
+  src/manage_tracker.cpp
+  src/utils.cpp
+  src/global_parameters.cpp
+  src/hungarian.cpp
+  src/kalmanfilter.cpp
+)
+
+target_include_directories(tracker_pipeline PRIVATE
   include
   ${OpenCV_INCLUDE_DIRS}
   ${TORCH_INCLUDE_DIRS}
 )
 
-add_executable(yolo_node
-  src/yolo_node.cpp
-  src/yolo_detect_batch.cpp
-  src/utils.cpp
-  src/global_parameters.cpp
-)
-
-ament_target_dependencies(yolo_node
+ament_target_dependencies(tracker_pipeline
   rclcpp
   sensor_msgs
   std_msgs
   cv_bridge
 )
 
-target_link_libraries(yolo_node
+target_link_libraries(tracker_pipeline
   ${OpenCV_LIBS}
   ${TORCH_LIBRARIES}
 )
 
-rosidl_target_interfaces(yolo_node
+rosidl_target_interfaces(tracker_pipeline
   ${PROJECT_NAME} "rosidl_typesupport_cpp"
 )
 
-add_executable(tracker_node
-  src/tracker_node.cpp
-  src/global_parameters.cpp
-  src/hungarian.cpp
-  src/kalmanfilter.cpp
-  src/manage_tracker.cpp
-  src/utils.cpp
-)
+if(BUILD_TESTING)
+  enable_testing()
 
-ament_target_dependencies(tracker_node
-  rclcpp
-  sensor_msgs
-  std_msgs
-  cv_bridge
-)
+  add_executable(tracker_tests
+    tests/test.cpp
+    src/manage_tracker.cpp
+    src/utils.cpp
+    src/global_parameters.cpp
+    src/hungarian.cpp
+    src/kalmanfilter.cpp
+  )
 
-target_link_libraries(tracker_node
-  ${OpenCV_LIBS}
-  ${TORCH_LIBRARIES}
-)
+  target_include_directories(tracker_tests PRIVATE
+    include
+    ${OpenCV_INCLUDE_DIRS}
+    ${TORCH_INCLUDE_DIRS}
+  )
 
-rosidl_target_interfaces(tracker_node
-  ${PROJECT_NAME} "rosidl_typesupport_cpp"
-)
+  target_link_libraries(tracker_tests
+    ${OpenCV_LIBS}
+    ${TORCH_LIBRARIES}
+  )
+
+  add_test(NAME tracker_tests COMMAND tracker_tests)
+endif()
 
 install(TARGETS
-  yolo_node
-  tracker_node
+  tracker_pipeline
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -92,4 +98,5 @@ install(DIRECTORY config/
 )
 
 ament_export_dependencies(rosidl_default_runtime)
+
 ament_package()

@@ -1,8 +1,9 @@
 #pragma once
-#include <iostream>
+//#include <iostream>
+//#include <queue>
+//#include <opencv2/opencv.hpp>
+#include <string>
 #include <vector>
-#include <queue>
-#include <opencv2/opencv.hpp>
 
 #ifndef GLOBAL_PARAMETERS_H
 #define GLOBAL_PARAMETERS_H
@@ -26,35 +27,31 @@ extern const int COUNTER_LOST;
 
 struct Config
 {
-    bool display = false;
+    bool display = true;
     double time_capture = 0.0;
-
+    std::string video_path = "none";
     std::string yolo_path;
-    int yoloWidth = 0;
-    int yoloHeight = 0;
-
+    int yoloWidth = 640;
+    int yoloHeight = 480;
+    double IoU_threshold = 0.7;
+    double conf_threshold = 0.3;
     std::vector<size_t> object_index;
-
-    double IoU_threshold = 0.0;
-    double conf_threshold = 0.0;
 };
+//For windows.
+// struct Cam2Yolo {
+//     cv::Mat img_raw;
+//     double time_img;
+// };
 
-struct Cam2Yolo {
-    cv::Mat img_raw;
-    double time_img;
-};
+// struct Yolo2Tracking {
+//     cv::Mat img_raw;
+//     std::vector<cv::Rect2d> rois;
+//     std::vector<int> labels;
+//     double time_detect;
+// };
 
-struct Yolo2Tracking {
-    cv::Mat img_raw;
-    std::vector<cv::Rect2d> rois;
-    std::vector<int> labels;
-    double time_detect;
-};
-
-
-
-extern std::queue<Cam2Yolo> q_cam2yolo;
-extern std::queue<Yolo2Tracking> q_yolo2tracking;
-extern std::queue<bool> q_end;
+// extern std::queue<Cam2Yolo> q_cam2yolo;
+// extern std::queue<Yolo2Tracking> q_yolo2yolo;
+// extern std::queue<bool> q_end;
 
 #endif

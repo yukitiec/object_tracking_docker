@@ -37,7 +37,7 @@ YoloNode::YoloNode()
   declare_parameter<std::string>("image_topic", "/camera/image_raw");
   declare_parameter<std::string>("detection_topic", "/yolo/detections");
   declare_parameter<std::string>("annotated_image_topic", "/yolo/image_annotated");
-  declare_parameter<bool>("publish_annotated_image", true);
+  declare_parameter<bool>("publish_annotated_image", false);
 
   const auto config_path = get_parameter("config_path").as_string();
   const auto image_topic = get_parameter("image_topic").as_string();

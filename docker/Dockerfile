@@ -39,6 +39,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     v4l-utils \
     usbutils \
     ca-certificates \
+    ros-humble-cv-bridge \
+    ros-humble-sensor-msgs \
+    ros-humble-std-msgs \
+    ros-humble-vision-opencv \
     && rm -rf /var/lib/apt/lists/*
 
 # Python dependencies
@@ -48,7 +52,7 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel && \
 
 # Install libtorch CPU
 RUN mkdir -p /opt && \
-    wget -O /tmp/libtorch.zip "https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.1.1%2Bcpu.zip" && \
+    wget -O /tmp/libtorch.zip "https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.11.0%2Bcpu.zip" && \
     unzip /tmp/libtorch.zip -d /opt && \
     rm -f /tmp/libtorch.zip
 
@@ -69,7 +73,7 @@ COPY ros_ws/src/tracker_pkg ${WS_DIR}/src/tracker_pkg
 
 # Install ROS package dependencies if package.xml declares them
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    rosdep install --from-paths src --ignore-src -r -y || true
+    rosdep install --from-paths src --ignore-src -r -y 
 
 # Build workspace
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \

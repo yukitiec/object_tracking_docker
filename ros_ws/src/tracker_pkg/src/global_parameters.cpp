@@ -18,6 +18,6 @@ const double NOISE_SENSOR = 1e1;//5e0
 
 const int COUNTER_LOST = 100;//humman life span.
 
-std::queue<Cam2Yolo> q_cam2yolo;
-std::queue<Yolo2Tracking> q_yolo2tracking;
-std::queue<bool> q_end;
+//std::queue<Cam2Yolo> q_cam2yolo;
+//std::queue<Yolo2Tracking> q_yolo2tracking;
+//std::queue<bool> q_end;

@@ -1,13 +1,14 @@
 display true           // whether display images or not
-time_capture 70        // time to capture images [seconds]
+time_capture 100        // time to capture images [seconds]
+video_path /ros_ws/src/tracker_pkg/video/test1_original/video.mp4 //None : use webcam, path : use video images.
 
-yolo_path C:/Users/kawaw/cpp/object_tracking_windows/object_tracking_windows/config/yolov10m_w640_h480.torchscript //yolov10n does not work well.
+yolo_path /ros_ws/src/tracker_pkg/config/config/yolov10m_w640_h480.torchscript //yolov10n does not work well.
 yoloWidth 640 //YOLO input image width
 yoloHeight 480  //YOLO input image height
 IoU_threshold 0.7 // IoU threshold for removing duplicated object
 conf_threshold 0.3 //Threshold for target object's detection confidence.
 
-object_index 42,44 //39,41,,63,73
+object_index 73,76//42,44 //39,41,,63,73
 // YOLO target objects' list. (coco.yaml -> https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/coco.yaml)
 // # Classes
 // names:

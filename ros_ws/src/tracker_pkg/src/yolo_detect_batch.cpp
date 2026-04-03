@@ -171,7 +171,7 @@ YOLODetect_batch::detect(const cv::Mat & frame, int & counter, const bool bool_c
     /* wrap to disable grad calculation */
     {
         torch::NoGradGuard no_grad;
-        preds = mdl.forward({imgTensor}).toTensor();  // preds shape : [1,300,6]
+        preds = mdl.forward({imgTensor}).toTensor();  // preds shape : [1,n(=N_candidates),6]
     }
 
     if (_debug_yolo) {
@@ -189,7 +189,7 @@ YOLODetect_batch::detect(const cv::Mat & frame, int & counter, const bool bool_c
     std::vector<torch::Tensor> rois;  // detected rois. (n,4)
     std::vector<int> labels;          // detected labels.
 
-    torch::Tensor preds_good = preds.select(2, 4) > _ConfThreshold;  // score threshold
+    torch::Tensor preds_good = preds.select(2, 4) >= _ConfThreshold;  // score threshold
     torch::Tensor x0 =
         preds.index_select(1, torch::nonzero(preds_good[0]).select(1, 0));
 

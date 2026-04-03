@@ -11,6 +11,8 @@
 
 #include "tracker_pkg/hungarian.h"
 
+#include <cmath>
+#include <cfloat>
 
 HungarianAlgorithm::HungarianAlgorithm() {}
 HungarianAlgorithm::~HungarianAlgorithm() {}
