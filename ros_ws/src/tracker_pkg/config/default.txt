@@ -2,7 +2,7 @@ display true           // whether display images or not
 time_capture 100        // time to capture images [seconds]
 video_path /ros_ws/src/tracker_pkg/video/test1_original/video.mp4 //None : use webcam, path : use video images.
 
-yolo_path /ros_ws/src/tracker_pkg/config/config/yolov10m_w640_h480.torchscript //yolov10n does not work well.
+yolo_path /ros_ws/src/tracker_pkg/config/config/yolov10m_w640_h480_cpu.torchscript //yolov10n does not work well.
 yoloWidth 640 //YOLO input image width
 yoloHeight 480  //YOLO input image height
 IoU_threshold 0.7 // IoU threshold for removing duplicated object

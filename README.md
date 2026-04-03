@@ -133,7 +133,22 @@ cd ~/object_tracking_linux/docker
 
 13. build Dockerfile to create Docker image.
 ```sh
+#if linux user.
 docker compose build
+
+# For preventing windows-specific format error.
+#convert line endings to Unix format
+sed -i 's/\r$//' ros_entrypoint.sh
+#check
+# yuki@wakki:~/object_tracking_linux/docker$ file ros_entrypoint.sh
+#ros_entrypoint.sh: Bourne-Again shell script, ASCII text executable
+
+#executable
+chmod +x ros_entrypoint.sh
+#check the contents
+cat -A ros_entrypoint.sh
+#rebuild
+docker compose build --no-cache
 ```
 
 ## Repository architecture
@@ -194,6 +209,7 @@ cd ~/object_tracking_linux/docker
 
 2. Start the container
 ```sh
+#if Linux
 docker compose run --rm ros2_tracker bash
 
 # (Trouble shooting)
@@ -214,6 +230,170 @@ cat -A ros_entrypoint.sh
 docker compose build --no-cache
 #run again.
 docker compose run --rm ros2_tracker bash
+# return ; yuki@wakki:~/object_tracking_linux/docker$ docker compose run --rm ros2_tracker bash
+# root@docker-desktop:/ros_ws#
+```
+3. Source ROS2
+```sh
+source /opt/ros/humble/setup.bash
+#check which version to use
+echo $ROS_DISTRO
+# return : humble (ROS2 humble)
+```
+4. (Optional) Check the source files are mounted.
+```sh
+ls /ros_ws
+ls /ros_ws/src
+ls /ros_ws/src/tracker_pkg
+ls /ros_ws/src/tracker_pkg/config
+ls /ros_ws/src/tracker_pkg/video
+```
+5. Build the workspace inside the container
+```sh
+cd /ros_ws
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DTorch_DIR=/opt/libtorch/share/cmake/Torch
+
+#build -> source 
+source /ros_ws/install/setup.bash
 ```
 
-3.
+6. (Optional) Verify the package is recognized.
+```sh
+ros2 pkg list | grep tracker_pkg
+#tracker_pkg
+```
+
+7. (Optional) Find the available executables
+```sh
+ros2 pkg executables tracker_pkg
+# return : tracker_pkg tracker_pipeline
+```
+
+8. Run tests/test.cpp
+```sh
+#locate tracker_tests.
+find /ros_ws/build -name tracker_tests
+find /ros_ws/install -name tracker_tests
+#run
+#if in /ros_ws/build
+/ros_ws/build/tracker_pkg/tracker_tests
+#if in /ros_ws/install
+/ros_ws/install/tracker_pkg/lib/tracker_pkg/tracker_tests
+
+#expected return
+#root@docker-desktop:/ros_ws# /ros_ws/build/tracker_pkg/tracker_tests
+#[PASS] test_synthetic_image_creation
+#Warning: Unknown config key at line 1: display=1
+#Warning: Unknown config key at line 2: time_capture=5.0
+#Warning: Unknown config key at line 3: yolo_path=/tmp/model.torchscript
+#Warning: Unknown config key at line 4: yoloWidth=640
+#Warning: Unknown config key at line 5: yoloHeight=480
+#Warning: Unknown config key at line 6: object_index=0,1
+#Warning: Unknown config key at line 7: IoU_threshold=0.5
+#Warning: Unknown config key at line 8: conf_threshold=0.4
+#[PASS] test_load_config
+#[PASS] test_tracker_update2d
+#All tests passed.
+```
+
+9. Run main.cpp
+```sh
+#check config file.
+cat /ros_ws/src/tracker_pkg/config/default.txt
+ls -l /ros_ws/src/tracker_pkg/config/yolov10m_w640_h480.torchscript
+
+#if config file is awkward.
+cat > /ros_ws/src/tracker_pkg/config/default.txt <<'EOF'
+display true
+time_capture 70
+video_path /ros_ws/src/tracker_pkg/video/test1_original/video.mp4
+
+yolo_path /ros_ws/src/tracker_pkg/config/yolov10m_w640_h480.torchscript
+yoloWidth 640
+yoloHeight 480
+IoU_threshold 0.7
+conf_threshold 0.3
+
+object_index 73,76
+EOF
+#run main.cpp
+ros2 run tracker_pkg tracker_pipeline
+```
+
+## When change the code in docker
+- Install extensions of "Dev Containers"
+- attach to the running container
+- open /ros_ws inside the container
+- change the code
+- build/source
+```sh
+cd /ros_ws
+source /opt/ros/humble/setup.bash
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DTorch_DIR=/opt/libtorch/share/cmake/Torch
+source /ros_ws/install/setup.bash
+```
+
+## Rebuild the docker
+```sh
+cd ~/object_tracking_linux/docker
+docker compose build
+#clean rebuild
+docker compose build --no-cache
+```
+
+## (Trouble shooting) W
+- rm: cannot remove '/home/yuki/object_tracking_linux/ros_ws/build/tracker_pkg/cmake_install.cmake': Permission denied
+rm: cannot remove '/home/yuki/object_tracking_linux/ros_ws/build/.built_by': Permission denied
+
+1. stop all containers
+```sh
+cd /mnt/c/Users/kawaw/cpp/object_tracking_linux/docker
+docker compose down
+
+#check the current docker image status
+docker ps -a
+```
+2. fix ownership of the broken WSL copy
+```sh
+sudo chown -R yuki:yuki ~/object_tracking_linux
+```
+3. remove the broken WSL copy
+```sh
+rm -rf ~/object_tracking_linux
+```
+4. Re-copy the host directory.
+```sh
+cp -r /mnt/c/Users/kawaw/cpp/object_tracking_linux ~/object_tracking_linux
+
+# (Optional) If you want to start fresh, you can delete the copied directory first to avoid old contents:
+# rm -rf ~/object_tracking_linux
+
+# Change directory to the docker folder inside the copied repo
+cd ~/object_tracking_linux/docker
+```
+5. Rebuild the docker image
+```sh
+#if Linux
+docker compose run --rm ros2_tracker bash
+
+# (Trouble shooting)
+# If /ros_entrypoint.sh does not exist.
+# problem may be "ros_entrypoint.sh has Windows line endings (CRLF)"
+cd ~/object_tracking_linux/docker
+#convert line endings to Unix format
+sed -i 's/\r$//' ros_entrypoint.sh
+#check
+# yuki@wakki:~/object_tracking_linux/docker$ file ros_entrypoint.sh
+#ros_entrypoint.sh: Bourne-Again shell script, ASCII text executable
+
+#executable
+chmod +x ros_entrypoint.sh
+#check the contents
+cat -A ros_entrypoint.sh
+#rebuild
+docker compose build --no-cache
+#run again.
+docker compose run --rm ros2_tracker bash
+# return ; yuki@wakki:~/object_tracking_linux/docker$ docker compose run --rm ros2_tracker bash
+# root@docker-desktop:/ros_ws#
+```

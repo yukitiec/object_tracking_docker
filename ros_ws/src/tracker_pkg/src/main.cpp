@@ -1,9 +1,7 @@
-#include <chrono>
+#include <rclcpp/rclcpp.hpp>
+
 #include <iostream>
 #include <memory>
-#include <thread>
-
-#include <rclcpp/rclcpp.hpp>
 
 #include "tracker_pkg/tracker_node.h"
 #include "tracker_pkg/yolo_node.h"
@@ -21,36 +19,19 @@ int main(int argc, char ** argv)
     executor.add_node(yolo_node);
     executor.add_node(tracker_node);
 
-    std::cout << "[INFO] Starting integration test with YoloNode and TrackerNode..." << std::endl;
+    RCLCPP_INFO(
+      rclcpp::get_logger("tracker_pipeline"),
+      "Starting ROS 2 pipeline with yolo_node and tracker_node.");
 
-    std::thread spin_thread([&executor]() {
-      executor.spin();
-    });
-
-    // Let the pipeline run briefly.
-    std::this_thread::sleep_for(std::chrono::seconds(3));
-
-    executor.cancel();
-
-    if (spin_thread.joinable()) {
-      spin_thread.join();
-    }
-
-    rclcpp::shutdown();
-
-    std::cout << "[PASS] Pipeline integration test completed." << std::endl;
-    return 0;
+    executor.spin();
   }
   catch (const std::exception & e)
   {
-    std::cerr << "[FAIL] Exception: " << e.what() << std::endl;
+    std::cerr << "Exception: " << e.what() << std::endl;
     rclcpp::shutdown();
-    return 1;
+    return -1;
   }
-  catch (...)
-  {
-    std::cerr << "[FAIL] Unknown exception" << std::endl;
-    rclcpp::shutdown();
-    return 1;
-  }
+
+  rclcpp::shutdown();
+  return 0;
 }
