@@ -150,6 +150,12 @@ void YoloNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
     rois_2d = result.first;
     labels = result.second;
 
+	RCLCPP_INFO(
+		this->get_logger(),
+		"Frame %d: detected %zu objects",
+		counter_,
+	rois_2d.size());
+
     publish_detections(msg->header, rois_2d, labels);
 
     if (publish_annotated_image_) {
@@ -167,7 +173,7 @@ void YoloNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
       total_time_ += time_inference;
     }
 
-    if (counter_ % 50 == 0 && counter_ <= 300) {
+    if (counter_ % 10 == 0 && counter_ <= 300) {
       RCLCPP_INFO(this->get_logger(), "YOLO processing time = %.3f ms", time_inference);
     }
   }
