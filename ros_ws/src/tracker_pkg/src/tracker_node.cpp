@@ -43,7 +43,8 @@ namespace
 bool is_none_string(const std::string & value)
 {
   std::string s = value;
-  std::transform(s.begin(), s.end(), s.begin(),
+  std::transform(
+    s.begin(), s.end(), s.begin(),
     [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
   return s == "none";
 }
@@ -52,88 +53,116 @@ bool is_none_string(const std::string & value)
 TrackerNode::TrackerNode()
 : Node("tracker_node")
 {
-  declare_parameter<std::string>("config_path", "/ros_ws/src/tracker_pkg/config/default.txt");
-  declare_parameter<std::string>("output_root", "/tmp/tracker_output");
-  declare_parameter<std::string>("image_topic", "/camera/image_raw");
-  declare_parameter<std::string>("detection_topic", "/yolo/detections");
-
-  const auto config_path = get_parameter("config_path").as_string();
-  output_root_ = get_parameter("output_root").as_string();
-  const auto image_topic = get_parameter("image_topic").as_string();
-  const auto detection_topic = get_parameter("detection_topic").as_string();
-
-  try
-  {
-    cfg_ = load_config(config_path);
-
-    RCLCPP_INFO(this->get_logger(), "Loaded config:");
-    RCLCPP_INFO(this->get_logger(), "display        : %s", cfg_.display ? "true" : "false");
-    RCLCPP_INFO(this->get_logger(), "time_capture   : %.3f", cfg_.time_capture);
-    RCLCPP_INFO(this->get_logger(), "video_path     : %s", cfg_.video_path.c_str());
-    RCLCPP_INFO(this->get_logger(), "yolo_path      : %s", cfg_.yolo_path.c_str());
-    RCLCPP_INFO(this->get_logger(), "yoloWidth      : %d", cfg_.yoloWidth);
-    RCLCPP_INFO(this->get_logger(), "yoloHeight     : %d", cfg_.yoloHeight);
-    RCLCPP_INFO(this->get_logger(), "IoU_threshold  : %.3f", cfg_.IoU_threshold);
-    RCLCPP_INFO(this->get_logger(), "conf_threshold : %.3f", cfg_.conf_threshold);
-
-    std::ostringstream oss;
-    oss << "object_index   : ";
-    for (size_t v : cfg_.object_index) {
-      oss << v << " ";
+    declare_parameter<std::string>("config_path", "/ros_ws/src/tracker_pkg/config/default.txt");
+    declare_parameter<std::string>("image_topic", "/camera/image_raw");
+    declare_parameter<std::string>("detection_topic", "/yolo/detections");
+    
+    const auto config_path = get_parameter("config_path").as_string();
+    const auto image_topic = get_parameter("image_topic").as_string();
+    const auto detection_topic = get_parameter("detection_topic").as_string();
+    
+    try
+    {
+      cfg_ = load_config(config_path);
+    
+      RCLCPP_INFO(this->get_logger(), "Loaded config:");
+      RCLCPP_INFO(this->get_logger(), "display        : %s", cfg_.display ? "true" : "false");
+      RCLCPP_INFO(this->get_logger(), "time_capture   : %.3f", cfg_.time_capture);
+      RCLCPP_INFO(this->get_logger(), "video_path     : %s", cfg_.video_path.c_str());
+      RCLCPP_INFO(this->get_logger(), "yolo_path      : %s", cfg_.yolo_path.c_str());
+      RCLCPP_INFO(this->get_logger(), "yoloWidth      : %d", cfg_.yoloWidth);
+      RCLCPP_INFO(this->get_logger(), "yoloHeight     : %d", cfg_.yoloHeight);
+      RCLCPP_INFO(this->get_logger(), "IoU_threshold  : %.3f", cfg_.IoU_threshold);
+      RCLCPP_INFO(this->get_logger(), "conf_threshold : %.3f", cfg_.conf_threshold);
+    
+      std::ostringstream oss;
+      oss << "object_index   : ";
+      for (size_t v : cfg_.object_index) {
+        oss << v << " ";
+      }
+      RCLCPP_INFO(this->get_logger(), "%s", oss.str().c_str());
     }
-    RCLCPP_INFO(this->get_logger(), "%s", oss.str().c_str());
-  }
-  catch (const std::exception & e)
-  {
-    RCLCPP_FATAL(this->get_logger(), "Failed to load config: %s", e.what());
-    throw;
-  }
-
-  use_video_file_ = !is_none_string(cfg_.video_path);
-
-  if (use_video_file_) {
-    video_capture_.open(cfg_.video_path);
-    if (!video_capture_.isOpened()) {
-      RCLCPP_FATAL(
-        this->get_logger(),
-        "Failed to open video file: %s",
-        cfg_.video_path.c_str());
-      throw std::runtime_error("Failed to open video file: " + cfg_.video_path);
+    catch (const std::exception & e)
+    {
+      RCLCPP_FATAL(this->get_logger(), "Failed to load config: %s", e.what());
+      throw;
     }
+    
+    std::string default_output_root = "/tmp/tracker_output";
+    if (!cfg_.video_path.empty() && !is_none_string(cfg_.video_path)) {
+      const auto parent = std::filesystem::path(cfg_.video_path).parent_path();
+      if (!parent.empty()) {
+        default_output_root = parent.string();
+      }
+    }
+    
+    declare_parameter<std::string>("output_root", default_output_root);
+    output_root_ = get_parameter("output_root").as_string();
+    
+    RCLCPP_INFO(this->get_logger(), "output_root    : %s", output_root_.c_str());
 
-	const double video_fps = video_capture_.get(cv::CAP_PROP_FPS);
-	if (video_fps > 0.0) {
-	  fps_ = std::max(1, static_cast<int>(std::round(video_fps)));
-	} else {
-	  fps_ = 30;
-	}
 
-    RCLCPP_INFO(
-      this->get_logger(),
-      "Using video file input: %s (fps=%d)",
-      cfg_.video_path.c_str(),
-      fps_);
-  } else {
-    RCLCPP_INFO(this->get_logger(), "Using ROS image topic input.");
-  }
+    use_video_file_ = !is_none_string(cfg_.video_path);
+    start_time_ = std::chrono::steady_clock::now();
 
-  start_time_ = std::chrono::steady_clock::now();
-
-  if (!use_video_file_) {
-    image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-      image_topic,
-      rclcpp::SensorDataQoS(),
-      std::bind(&TrackerNode::image_callback, this, _1));
-
-    RCLCPP_INFO(this->get_logger(), "Subscribed to image topic: %s", image_topic.c_str());
-  }
-
-  detection_sub_ = this->create_subscription<tracker_pkg::msg::Detection2DArray>(
+    detection_sub_ = this->create_subscription<tracker_pkg::msg::Detection2DArray>(
     detection_topic,
     10,
     std::bind(&TrackerNode::detection_callback, this, _1));
 
-  RCLCPP_INFO(this->get_logger(), "Subscribed to detection topic: %s", detection_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "Subscribed to detection topic: %s", detection_topic.c_str());
+
+    if (use_video_file_) {
+    video_capture_.open(cfg_.video_path);
+    if (!video_capture_.isOpened()) {
+        RCLCPP_FATAL(
+        this->get_logger(),
+        "Failed to open video file: %s",
+        cfg_.video_path.c_str());
+        throw std::runtime_error("Failed to open video file: " + cfg_.video_path);
+    }
+
+    const double video_fps = video_capture_.get(cv::CAP_PROP_FPS);
+    if (video_fps > 0.0) {
+        fps_ = std::max(1, static_cast<int>(std::round(video_fps)));
+    } else {
+        fps_ = 30;
+    }
+
+    image_pub_ = this->create_publisher<sensor_msgs::msg::Image>(image_topic, 10);
+
+    RCLCPP_INFO(
+        this->get_logger(),
+        "Using video file input: %s (fps=%d)",
+        cfg_.video_path.c_str(),
+        fps_);
+
+    RCLCPP_INFO(
+        this->get_logger(),
+        "Publishing video frames to image topic: %s",
+        image_topic.c_str());
+
+    // Publish the first frame immediately to start the YOLO -> tracker handshake.
+    startup_timer_ = this->create_wall_timer(
+        std::chrono::milliseconds(200),
+        [this]() {
+            if (!waiting_for_detection_ && !end_of_video_reached_) {
+            if (!publish_next_video_frame()) {
+                RCLCPP_ERROR(this->get_logger(), "Failed to publish the first video frame.");
+                rclcpp::shutdown();
+            }
+            }
+            startup_timer_->cancel();
+    });
+    } else {
+    image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+        image_topic,
+        rclcpp::SensorDataQoS(),
+        std::bind(&TrackerNode::image_callback, this, _1));
+
+    RCLCPP_INFO(this->get_logger(), "Using ROS image topic input.");
+    RCLCPP_INFO(this->get_logger(), "Subscribed to image topic: %s", image_topic.c_str());
+    }
 }
 
 TrackerNode::~TrackerNode()
@@ -168,48 +197,108 @@ void TrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
   }
 }
 
+bool TrackerNode::publish_next_video_frame()
+{
+  if (!use_video_file_) {
+    return false;
+  }
+
+  if (!video_capture_.isOpened()) {
+    RCLCPP_ERROR(this->get_logger(), "Video capture is not opened.");
+    return false;
+  }
+
+  cv::Mat frame;
+  if (!video_capture_.read(frame) || frame.empty()) {
+    end_of_video_reached_ = true;
+    RCLCPP_INFO(this->get_logger(), "Reached end of video.");
+    return false;
+  }
+
+  latest_image_ = frame.clone();
+
+  latest_header_.stamp = this->now();
+  latest_header_.frame_id = "camera";
+
+  auto image_msg = cv_bridge::CvImage(
+    latest_header_,
+    sensor_msgs::image_encodings::BGR8,
+    latest_image_).toImageMsg();
+
+  image_pub_->publish(*image_msg);
+  waiting_for_detection_ = true;
+
+  RCLCPP_INFO(
+    this->get_logger(),
+    "Published frame %zu to YOLO",
+    video_frame_index_);
+
+  return true;
+}
+
 void TrackerNode::detection_callback(const tracker_pkg::msg::Detection2DArray::SharedPtr msg)
+{
+  if (use_video_file_ && !waiting_for_detection_) {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "Received detection while not waiting for one. Ignoring.");
+    return;
+  }
+
+  process_tracking_for_current_frame(msg);
+
+  if (use_video_file_) {
+    waiting_for_detection_ = false;
+    ++video_frame_index_;
+
+    if (cfg_.time_capture > 0.0) {
+      const double time_current =
+        static_cast<double>(video_frame_index_) / static_cast<double>(fps_);
+      if (time_current > cfg_.time_capture) {
+        RCLCPP_INFO(this->get_logger(), "Reached time_capture limit. Shutting down.");
+        rclcpp::shutdown();
+        return;
+      }
+    }
+
+    if (!publish_next_video_frame()) {
+      RCLCPP_INFO(this->get_logger(), "Video processing finished. Shutting down.");
+      rclcpp::shutdown();
+      return;
+    }
+  }
+}
+
+void TrackerNode::process_tracking_for_current_frame(
+  const tracker_pkg::msg::Detection2DArray::SharedPtr msg)
 {
   cv::Mat color_image;
   double time_current = 0.0;
   double time_detect = 0.0;
 
+  if (latest_image_.empty()) {
+    RCLCPP_WARN(this->get_logger(), "No image available yet.");
+    return;
+  }
+
+  color_image = latest_image_.clone();
+
   if (use_video_file_) {
-    if (!video_capture_.isOpened()) {
-      RCLCPP_ERROR(this->get_logger(), "Video capture is not opened.");
-      rclcpp::shutdown();
-      return;
-    }
-
-    if (!video_capture_.read(color_image) || color_image.empty()) {
-      RCLCPP_INFO(this->get_logger(), "Reached end of video. Shutting down.");
-      rclcpp::shutdown();
-      return;
-    }
-
     time_current = static_cast<double>(video_frame_index_) / static_cast<double>(fps_);
     time_detect = time_current;
   } else {
     auto now_steady = std::chrono::steady_clock::now();
-    time_current =
-      std::chrono::duration<double>(now_steady - start_time_).count();
-
-    if (latest_image_.empty()) {
-      RCLCPP_WARN(this->get_logger(), "No image received yet.");
-      return;
-    }
-
-    color_image = latest_image_.clone();
+    time_current = std::chrono::duration<double>(now_steady - start_time_).count();
 
     time_detect =
       static_cast<double>(msg->header.stamp.sec) +
       static_cast<double>(msg->header.stamp.nanosec) * 1e-9;
-  }
 
-  if (cfg_.time_capture > 0.0 && time_current > cfg_.time_capture) {
-    RCLCPP_INFO(this->get_logger(), "Reached time_capture limit. Shutting down.");
-    rclcpp::shutdown();
-    return;
+    if (cfg_.time_capture > 0.0 && time_current > cfg_.time_capture) {
+      RCLCPP_INFO(this->get_logger(), "Reached time_capture limit. Shutting down.");
+      rclcpp::shutdown();
+      return;
+    }
   }
 
   if (counter_deb_ == 0) {
@@ -237,13 +326,15 @@ void TrackerNode::detection_callback(const tracker_pkg::msg::Detection2DArray::S
 
       (void)index_delete_storage;
       ps_2d_.emplace_back(rois_2d);
+    } else {
+      ps_2d_.emplace_back();
     }
 
-    if (cfg_.display) {
-      draw_tracking_results(color_image);
-      cv::imshow("Tracker Output", color_image);
-      cv::waitKey(1);
-    }
+    //if (cfg_.display) {
+    draw_tracking_results(color_image);
+    cv::imshow("Tracker Output", color_image);
+    cv::waitKey(1);
+    //}
 
     stored_color_images_.push_back(color_image.clone());
 
@@ -263,10 +354,6 @@ void TrackerNode::detection_callback(const tracker_pkg::msg::Detection2DArray::S
   catch (const std::exception & e)
   {
     RCLCPP_ERROR(this->get_logger(), "Error during tracking: %s", e.what());
-  }
-
-  if (use_video_file_) {
-    ++video_frame_index_;
   }
 
   ++counter_;

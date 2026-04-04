@@ -25,6 +25,7 @@ class YoloNode : public rclcpp::Node
 {
 public:
   YoloNode();
+  ~YoloNode() override;
 
 private:
   void image_callback(const sensor_msgs::msg::Image::SharedPtr msg);
@@ -52,7 +53,7 @@ private:
 
   std::unique_ptr<YOLODetect_batch> yolo_detect_;
   bool yolo_initialized_{false};
-  bool publish_annotated_image_{true};
+  bool publish_annotated_image_{false};
 
   int frame_width_{0};
   int frame_height_{0};

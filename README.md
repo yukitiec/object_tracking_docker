@@ -16,6 +16,8 @@ This project was implemented as a ROS object tracking take-home assignment and s
 - Basic testing support
 - Output visualization and CSV logging
 
+### [Demo video 1 (Offline tracking with CPU (AMD Ryzen 5 7645HX with Radeon Graphics) : 2 Hz)](ros_ws/src/tracker_pkg/video/test1_original/output_video.mp4)
+### [Demo video 2 (Real-time tracking with GPU (NVIDIA GeForce RTX 4050 Laptop GPU) : 10 Hz))](ros_ws/src/tracker_pkg/video/test2_draw/output_video.mp4)
 ---
 
 ## 1. Overview
@@ -28,6 +30,7 @@ The system consists of two ROS2 nodes:
    - Publishes detection results as a custom ROS2 message
 
 2. **Tracker node**
+   - Send video images to YOLO node every time YOLO detections are subscribed.
    - Subscribes to detections
    - Associates detections across frames using **SORT**
    - Draws tracking results
@@ -104,6 +107,7 @@ object_tracking_linux/
 		Displays tracking results
 		Saves tracked trajectories to CSV
 		Optionally saves output video
+	Publishes video images to /camera/image_raw 
 - Topics
 	Input image topic
 		/camera/image_raw
@@ -129,15 +133,15 @@ object_tracking_linux/
 %/ros_ws/src/tracker_pkg/config/default.txt
 
 #contents
-display true
+display true #display the tracking results in realtime.
 time_capture 70
 video_path /ros_ws/src/tracker_pkg/video/test1_original/video.mp4
 
 yolo_path /ros_ws/src/tracker_pkg/config/yolov10m_w640_h480_cpu.torchscript
 yoloWidth 640
 yoloHeight 480
-IoU_threshold 0.7
-conf_threshold 0.3
+IoU_threshold 0.7 
+conf_threshold 0.3 
 
 object_index 73,76
 ```
@@ -147,8 +151,8 @@ object_index 73,76
 	- video_path: video file path or none (webcamera)
 	- yolo_path: TorchScript model path
 	- yoloWidth, yoloHeight: detector input size
-	- IoU_threshold: Duplicated objects' IoU threshold (Not used in YOLOv10n)
-	- conf_threshold: detection confidence threshold
+	- IoU_threshold: Duplicated objects' IoU threshold (Not used in YOLOv10n) [0,1]
+	- conf_threshold: detection confidence threshold [0,1]
 	- object_index: target class indices
 
 
@@ -160,7 +164,7 @@ object_index 73,76
 	yolo_path /ros_ws/src/tracker_pkg/config/yolov10m_w640_h480_cpu.torchscript
 	```
 	- Recommended workflow
-	- Trace pretrained .pt to torchscripts in: make_torchscript/
+	- Trace pretrained .pt to torchscripts in: make_torchscript/makeTorchScript.ipynb
 	- Place the generated deployment model in: ros_ws/src/tracker_pkg/config/
 
 ## 8. Docker and Docker Compose
@@ -176,27 +180,55 @@ object_index 73,76
 ## 9. Build and Run
 - Build Docker image
 ```bash
+#Linux user.
 cd ~/object_tracking_linux/docker
 docker compose build --no-cache
+
+#windows user (Docker Desktop + WSL2)
+# (Trouble shooting)
+# If /ros_entrypoint.sh does not exist.
+# problem may be "ros_entrypoint.sh has Windows line endings (CRLF)"
+cd ~/object_tracking_linux/docker
+#convert line endings to Unix format
+sed -i 's/\r$//' ros_entrypoint.sh
+#check
+# yuki@wakki:~/object_tracking_linux/docker$ file ros_entrypoint.sh
+#ros_entrypoint.sh: Bourne-Again shell script, ASCII text executable
+
+#executable
+chmod +x ros_entrypoint.sh
+#check the contents
+cat -A ros_entrypoint.sh
+#rebuild
+docker compose build --no-cache
+#run again.
+docker compose run --rm ros2_tracker bash
+# return ; yuki@wakki:~/object_tracking_linux/docker$ docker compose run --rm ros2_tracker bash
+# root@docker-desktop:/ros_ws#
 ```
+
 - Start container
 ```bash
 docker compose run --rm ros2_tracker bash
 ```
+
 - Build workspace inside container
 ```bash
 source /opt/ros/humble/setup.bash
 cd /ros_ws
+#build 
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DTorch_DIR=/opt/libtorch/share/cmake/Torch
+#update shell's environment.
 source /ros_ws/install/setup.bash
 ```
+
 - Run main pipeline
 ```bash
 ros2 run tracker_pkg tracker_pipeline
 ```
 
 ## 10. Webcam and Video Input
-- Webcam mode
+- Webcam mode (not tested in the linux version. [tested with windows](https://github.com/yukitiec/object_tracking_windows.git))
 	- Set none in video_path:
 	```txt
 	video_path none
@@ -217,6 +249,10 @@ ros2 run tracker_pkg tracker_pipeline
 - Saved under:
 ```text
 /tmp/tracker_output/<timestamp>/
+
+or
+
+video_path/<timestamp>/
 ```
 - Typical outputs:
 	- time_list.csv : image time list (1,N_frames)
@@ -229,6 +265,7 @@ ros2 run tracker_pkg tracker_pipeline
 ```text
 ros_ws/src/tracker_pkg/tests/
 ```
+
 - Build tests
 ```bash
 source /opt/ros/humble/setup.bash
@@ -236,20 +273,24 @@ cd /ros_ws
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DTorch_DIR=/opt/libtorch/share/cmake/Torch
 source /ros_ws/install/setup.bash
 ```
+
 - Run tests
 ```bash
 #if tracker_tests is in build
 find /ros_ws/build -name tracker_tests
 /ros_ws/build/tracker_pkg/tracker_tests
 ```
+
 ## 13. Pre-commit and Static Checks
 - The repository includes:
 	- text.pre-commit-config.yaml
+
 - Install
 ```bash
 pip install pre-commit
 pre-commit install
 ```
+
 - Run manually
 ```bash
 pre-commit run --all-files
@@ -259,7 +300,7 @@ pre-commit run --all-files
 - Webcam access in Docker Desktop + WSL2 may be restricted
 - Video-file mode is the most reliable test method in this environment
 - TorchScript model must match deployment runtime, especially CPU vs CUDA
-- Current video mode assumes sequential frame-to-detection correspondence and does not consider the inference time.
+- Current video mode assumes sequential frame-to-detection correspondence and does not consider the latency caused by inference time.
 
 ## 15. Design Decisions
 - Why YOLOv10m + SORT
@@ -275,15 +316,27 @@ pre-commit run --all-files
 - system robust to occlusion.
 
 ## 17. Quick Start
+
 - Build
 ```bash
+# Copy the entire project directory from the Windows filesystem to your Linux home directory
+cp -r /mnt/c/Users/kawaw/cpp/object_tracking_linux ~/object_tracking_linux
+
+# (Optional) If you want to start fresh, you can delete the copied directory first to avoid old contents:
+# rm -rf ~/object_tracking_linux
+
+# Change directory to the docker folder inside the copied repo
 cd ~/object_tracking_linux/docker
+
+#build docker image.
 docker compose build --no-cache
 ```
-- Run
+
+- start docker container.
 ```bash
 docker compose run --rm ros2_tracker bash
 ```
+
 - Run tracking pipeling inside container
 ```bash
 source /opt/ros/humble/setup.bash
@@ -292,6 +345,7 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DTorch_D
 source /ros_ws/install/setup.bash
 ros2 run tracker_pkg tracker_pipeline
 ```
+
 ## 18. Submission Notes
 This project includes:
 - ROS2 Humble implementation

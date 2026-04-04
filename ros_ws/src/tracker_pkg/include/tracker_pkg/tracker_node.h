@@ -22,7 +22,7 @@
 #include "tracker_pkg/manage_tracker.h"
 #include "tracker_pkg/msg/detection2_d_array.hpp"
 
-using Track2DEntry = std::tuple<double, int, cv::Rect2d>;   // time, label, bbox
+using Track2DEntry = std::tuple<double, int, cv::Rect2d>;
 using Track2DSeq = std::vector<Track2DEntry>;
 
 class TrackerNode : public rclcpp::Node
@@ -34,6 +34,10 @@ public:
 private:
   void image_callback(const sensor_msgs::msg::Image::SharedPtr msg);
   void detection_callback(const tracker_pkg::msg::Detection2DArray::SharedPtr msg);
+  void video_timer_callback();
+  bool publish_next_video_frame();
+  void process_tracking_for_current_frame(
+    const tracker_pkg::msg::Detection2DArray::SharedPtr msg);
 
   void draw_tracking_results(cv::Mat & color_image);
   void finalize_and_save();
@@ -48,6 +52,8 @@ private:
 
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
   rclcpp::Subscription<tracker_pkg::msg::Detection2DArray>::SharedPtr detection_sub_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_pub_;
+  rclcpp::TimerBase::SharedPtr startup_timer_;
 
   TrackerManager tracker_manager_;
 
@@ -56,6 +62,8 @@ private:
 
   cv::VideoCapture video_capture_;
   bool use_video_file_{false};
+  bool waiting_for_detection_{false};
+  bool end_of_video_reached_{false};
 
   std::vector<std::vector<cv::Rect2d>> ps_2d_;
   std::vector<std::vector<Track2DEntry>> storage_2d_;

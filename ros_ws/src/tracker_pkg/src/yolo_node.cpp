@@ -94,8 +94,22 @@ YoloNode::YoloNode()
   }
 }
 
+YoloNode::~YoloNode()
+{
+  double processing_speed = 0.0;
+  if (total_time_ > 0.0) {
+    processing_speed = static_cast<double>(counter_) / (total_time_ / 1000.0);
+  }
+
+  RCLCPP_INFO(
+    this->get_logger(),
+    "YOLO average processing speed = %.3f Hz",
+    processing_speed);
+}
+
 void YoloNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
 {
+
   cv::Mat color_image;
   try
   {
@@ -115,6 +129,8 @@ void YoloNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
   }
 
   if (!yolo_initialized_) {
+    RCLCPP_INFO(this->get_logger(), "Creating YOLODetect_batch");
+
     frame_width_ = color_image.cols;
     frame_height_ = color_image.rows;
 
@@ -128,8 +144,10 @@ void YoloNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
       cfg_.object_index,
       cfg_.yolo_path);
 
-    // Warm up model once after the detector is created.
-    yolo_detect_->warmup();
+    //RCLCPP_INFO(this->get_logger(), "Calling warmup");
+    //yolo_detect_->warmup();
+    //RCLCPP_INFO(this->get_logger(), "Warmup finished");
+
     yolo_initialized_ = true;
 
     RCLCPP_INFO(
@@ -139,22 +157,24 @@ void YoloNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
       frame_height_);
   }
 
+  int frame_index = counter_;
   auto st_iteration = std::chrono::steady_clock::now();
 
   try
   {
+
     std::vector<cv::Rect2d> rois_2d;
     std::vector<int> labels;
 
-    auto result = yolo_detect_->detect(color_image, counter_, true);
+    auto result = yolo_detect_->detect(color_image, frame_index, true);
     rois_2d = result.first;
     labels = result.second;
 
-	RCLCPP_INFO(
-		this->get_logger(),
-		"Frame %d: detected %zu objects",
-		counter_,
-	rois_2d.size());
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Frame %d: detected %zu objects",
+      frame_index,
+      rois_2d.size());
 
     publish_detections(msg->header, rois_2d, labels);
 
@@ -169,11 +189,11 @@ void YoloNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
       std::chrono::duration_cast<std::chrono::milliseconds>(
         end_iteration - st_iteration).count();
 
-    if (time_inference < 100.0) {
-      total_time_ += time_inference;
-    }
 
-    if (counter_ % 10 == 0 && counter_ <= 300) {
+	total_time_ += time_inference;
+    
+
+    if (frame_index % 10 == 0 && frame_index <= 300) {
       RCLCPP_INFO(this->get_logger(), "YOLO processing time = %.3f ms", time_inference);
     }
   }
@@ -181,6 +201,8 @@ void YoloNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
   {
     RCLCPP_ERROR(this->get_logger(), "Error during YOLO processing: %s", e.what());
   }
+
+  ++counter_;
 }
 
 void YoloNode::publish_detections(
