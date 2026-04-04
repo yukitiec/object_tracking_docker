@@ -21,11 +21,10 @@ rad.json
 #pytorch file
 *.pt
 *.pth
-*.torchscript
+#*.torchscript
 *.pyc
 #torchvision directory
 torchscript/
-video_20250908/
 yolov10n_weights/
 csv/
 camera_params/
@@ -34,7 +33,7 @@ _pycache_/
 #output file.
 #*.csv
 #*.mp4
-*.png
+#*.png
 *.jpg
 *.jpeg
 *.gif

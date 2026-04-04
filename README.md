@@ -16,6 +16,7 @@ This project was implemented as a ROS object tracking take-home assignment and s
 - Basic testing support
 - Output visualization and CSV logging
 
+![Demo image](samples/test1_cpu.png)
 ### [Demo video 1 (Offline tracking with CPU (AMD Ryzen 5 7645HX with Radeon Graphics) : 2 Hz)](samples/test1_cpu.mp4)
 ### [Demo video 2 (Real-time tracking with GPU (NVIDIA GeForce RTX 4050 Laptop GPU) : 10 Hz))](samples/test2_gpu.mp4)
 ---
