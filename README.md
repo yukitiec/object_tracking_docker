@@ -119,14 +119,14 @@ object_tracking_linux/
 
 ## 5. Tracking Approach
 - Detector: YOLOv10m exported as TorchScript
-- Tracker: SORT-based association
-	Kalman filter prediction
-	distance and size-based association
-	Hungarian algorithm matching
+- Tracker: SORT-based association \
+	Kalman filter prediction \
+	distance and size-based association \
+	Hungarian algorithm matching \
 - Output
-	Bounding box visualization with object IDs
-	CSV export of tracked objects
-	Optionally save video
+	Bounding box visualization with object IDs \
+	CSV export of tracked objects \
+	Optionally save video \
 
 ## 6. Runtime Configuration
 - Main config file
