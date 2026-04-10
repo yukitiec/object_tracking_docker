@@ -96,25 +96,25 @@ object_tracking_linux/
 ## 4. System Architecture
 ### Nodes
 - yolo_node
-	Subscribes to /camera/image_raw
-		Loads a TorchScript YOLOv10m model
-		Performs object detection for designated object classes
+	Subscribes to /camera/image_raw \
+		Loads a TorchScript YOLOv10m model \
+		Performs object detection for designated object classes \
 	Publishes detection results to /yolo/detections 
 
-- tracker_node
-	Subscribes to /yolo/detections
-		Uses ROS image input or a configured video file
-		Associates detections across frames using SORT
-		Displays tracking results
-		Saves tracked trajectories to CSV
-		Optionally saves output video
+- tracker_node 
+	Subscribes to /yolo/detections \
+		Uses ROS image input or a configured video file \ 
+		Associates detections across frames using SORT \
+		Displays tracking results \
+		Saves tracked trajectories to CSV \
+		Optionally saves output video \
 	Publishes video images to /camera/image_raw 
 - Topics
-	Input image topic
-		/camera/image_raw
-		Type: sensor_msgs/msg/Image
-	Detection topic
-		/yolo/detections
+	Input image topic \
+		/camera/image_raw \
+		Type: sensor_msgs/msg/Image \
+	Detection topic \
+		/yolo/detections \
 		Type: custom message tracker_pkg/msg/Detection2DArray
 
 ## 5. Tracking Approach
@@ -122,11 +122,11 @@ object_tracking_linux/
 - Tracker: SORT-based association \
 	Kalman filter prediction \
 	distance and size-based association \
-	Hungarian algorithm matching \
+	Hungarian algorithm matching 
 - Output
 	Bounding box visualization with object IDs \
 	CSV export of tracked objects \
-	Optionally save video \
+	Optionally save video 
 
 ## 6. Runtime Configuration
 - Main config file
